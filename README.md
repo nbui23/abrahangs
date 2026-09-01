@@ -1,5 +1,7 @@
 # Abrahangs
 
+### ▶︎ [Open the timer](https://nbui23.github.io/abrahangs/)
+
 Single-page timer for Emil Abrahamsson's daily hangboard routine, following the
 set order and timing of his
 [10 Minute Daily Hangboard Routine (FOLLOW ALONG)](https://www.youtube.com/watch?v=3FNZdixeuZw).
@@ -39,6 +41,8 @@ It should feel like light strain, never hard.
 
 ## Hosting it free
 
+This copy is live on GitHub Pages at <https://nbui23.github.io/abrahangs/>.
+
 Any static host will do — it's one file. GitHub Pages, from this directory:
 
 ```sh
@@ -51,7 +55,8 @@ To try it on the phone first: `python3 -m http.server 8000` here, then open
 
 ## On the iPhone
 
-- Share → **Add to Home Screen** for fullscreen with no Safari chrome.
+- Open <https://nbui23.github.io/abrahangs/> in Safari, then Share →
+  **Add to Home Screen** for fullscreen with no Safari chrome.
 - The **silent switch mutes the beeps** — ringer on, or keep the spoken cues
   (speech synthesis ignores the switch).
 - Screen Wake Lock holds the display on, and re-acquires when you return to the tab.
