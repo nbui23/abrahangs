@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Abrahangs</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Abrahangs">
+<meta name="theme-color" content="#0b0d10">
+<style>
+  :root{
+    --bg:#0b0d10; --card:#151a21; --line:#232a34;
+    --fg:#e8edf4; --dim:#8b97a8;
+    --hang:#34d399; --rest:#60a5fa; --prep:#fbbf24; --done:#a78bfa;
+    --accent:var(--prep);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{height:100%}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.4 -apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+    display:flex; flex-direction:column;
+    padding:max(12px,env(safe-area-inset-top)) max(14px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+    overscroll-behavior:none; touch-action:manipulation; user-select:none; -webkit-user-select:none;
+  }
+  header{display:flex; align-items:center; justify-content:space-between; gap:8px}
+  h1{font-size:15px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:0; font-weight:600}
+  .ghost{background:none; border:1px solid var(--line); color:var(--dim); border-radius:10px; padding:8px 12px; font-size:13px; font-weight:600}
+  main{flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:14px; min-height:0}
+  .phase{font-size:13px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); font-weight:700}
+  .dial{position:relative; width:min(74vw,300px); aspect-ratio:1}
+  .dial svg{width:100%; height:100%; transform:rotate(-90deg)}
+  .track{fill:none; stroke:var(--line); stroke-width:8}
+  .arc{fill:none; stroke:var(--accent); stroke-width:8; stroke-linecap:round; transition:stroke .2s}
+  .dialtext{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px}
+  .time{font-size:76px; font-weight:700; font-variant-numeric:tabular-nums; letter-spacing:-.03em; line-height:1}
+  .setno{font-size:13px; color:var(--dim); font-variant-numeric:tabular-nums}
+  .exercise{font-size:24px; font-weight:650; text-align:center; min-height:1.4em}
+  .detail{font-size:15px; color:var(--dim); text-align:center; min-height:1.4em}
+  .next{font-size:13px; color:var(--dim); text-align:center; min-height:1.3em}
+  .controls{display:flex; gap:10px; width:100%; max-width:420px}
+  button{font-family:inherit; font-size:17px; font-weight:650; border-radius:14px; border:none; padding:18px 0; color:#0b0d10; background:var(--accent); flex:1}
+  button:active{filter:brightness(.88)}
+  .sec{background:var(--card); color:var(--fg); border:1px solid var(--line); flex:0 0 30%}
+  footer{display:flex; justify-content:space-between; align-items:center; gap:10px; color:var(--dim); font-size:13px; padding-top:12px; border-top:1px solid var(--line)}
+  .pill{background:var(--card); border:1px solid var(--line); border-radius:999px; padding:6px 12px; font-variant-numeric:tabular-nums}
+  #panel{display:none; position:fixed; inset:0; background:var(--bg); z-index:5; overflow-y:auto;
+    padding:max(16px,env(safe-area-inset-top)) 18px max(24px,env(safe-area-inset-bottom))}
+  #panel.on{display:block}
+  #panel h2{font-size:13px; letter-spacing:.14em; text-transform:uppercase; color:var(--dim); margin:22px 0 8px}
+  .row{display:flex; align-items:center; justify-content:space-between; gap:12px; background:var(--card);
+    border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:8px}
+  .row label{font-size:15px}
+  .row input[type=number]{width:88px; background:#0b0d10; border:1px solid var(--line); color:var(--fg);
+    border-radius:8px; padding:10px; font:inherit; text-align:right; font-variant-numeric:tabular-nums}
+  .row input[type=checkbox]{width:26px; height:26px; accent-color:var(--hang)}
+  .hint{color:var(--dim); font-size:13px; margin:6px 2px 0}
+  ol.plan{color:var(--dim); font-size:14px; padding-left:22px; margin:0}
+  ol.plan li{margin:5px 0}
+  ol.plan b{color:var(--fg); font-weight:600}
+  #test{white-space:pre-wrap; font:13px ui-monospace,Menlo,monospace; padding:16px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Abrahangs</h1>
+  <button class="ghost" id="openSettings">Settings</button>
+</header>
+
+<main>
+  <div class="phase" id="phase">Ready</div>
+  <div class="dial">
+    <svg viewBox="0 0 120 120">
+      <circle class="track" cx="60" cy="60" r="52"></circle>
+      <circle class="arc" id="arc" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+    </svg>
+    <div class="dialtext">
+      <div class="time" id="time">0:10</div>
+      <div class="setno" id="setno">set 1 / 10</div>
+    </div>
+  </div>
+  <div class="exercise" id="exercise">Half crimp</div>
+  <div class="detail" id="detail">14 mm edge · 80% BW</div>
+  <div class="next" id="next"></div>
+  <div class="controls">
+    <button class="sec" id="skip">Skip</button>
+    <button id="start">Start</button>
+    <button class="sec" id="reset">Reset</button>
+  </div>
+</main>
+
+<footer>
+  <span class="pill" id="today">today 0 / 2</span>
+  <span class="pill" id="streak">streak 0d</span>
+  <span class="pill" id="clock">next any time</span>
+</footer>
+
+<div id="panel">
+  <header>
+    <h1>Settings</h1>
+    <button class="ghost" id="closeSettings">Done</button>
+  </header>
+
+  <h2>Load</h2>
+  <div class="row"><label for="bw">Bodyweight (kg)</label><input type="number" id="bw" min="20" max="200" step="0.5"></div>
+  <div class="row"><label for="maxAdd">Max hang added weight (kg)</label><input type="number" id="maxAdd" min="0" max="200" step="0.5"></div>
+  <div class="row"><label for="pctMain">Main grips (% of max)</label><input type="number" id="pctMain" min="10" max="70" step="1"></div>
+  <div class="row"><label for="pctTwo">Two-finger crimps (% of max)</label><input type="number" id="pctTwo" min="5" max="70" step="1"></div>
+  <p class="hint">Added weight is what you can hang with for a 5 s max hang on a 20 mm edge, so your max total is
+  <b id="maxTotal">—</b> kg. Feet stay on the floor: stand on a bathroom scale, pull down on the board, and watch the
+  scale drop to the target. Main grips → pull <b id="loadMain">—</b> kg, scale reads <b id="scaleMain">—</b> kg.
+  Two-finger crimps → pull <b id="loadTwo">—</b> kg, scale reads <b id="scaleTwo">—</b> kg.
+  It should feel like light strain, never hard.</p>
+
+  <h2>Timing</h2>
+  <div class="row"><label for="hang">Hang (s)</label><input type="number" id="hang" min="3" max="60" step="1"></div>
+  <div class="row"><label for="rest">Rest (s)</label><input type="number" id="rest" min="5" max="180" step="5"></div>
+  <div class="row"><label for="prep">Get ready (s)</label><input type="number" id="prep" min="0" max="60" step="1"></div>
+
+  <h2>Cues</h2>
+  <div class="row"><label for="beeps">Beeps</label><input type="checkbox" id="beeps"></div>
+  <div class="row"><label for="speak">Speak exercise names</label><input type="checkbox" id="speak"></div>
+  <p class="hint">iPhone silent switch mutes the beeps — flip the ringer on.</p>
+
+  <h2>The routine</h2>
+  <ol class="plan" id="plan"></ol>
+  <p class="hint">Twice a day, every day, at least 6 hours apart — and at least 6 hours from a climbing session. Load is
+  sub-maximal on purpose: hard enough to feel, easy enough to repeat tomorrow.</p>
+
+  <h2>History</h2>
+  <div class="row"><label>Sessions logged</label><span id="histCount">0</span></div>
+  <button class="sec" id="clearHist" style="width:100%; flex:none">Clear history</button>
+</div>
+
+<script>
+// Emil Abrahamsson, "10 Minute Daily Hangboard Routine (FOLLOW ALONG)" — chapter order.
+// reps = chapter length / (10s hang + 20s rest): the 3-minute chapters are 6 sets, the 1-minute ones 2.
+// load: 'main' = ~40% of max hang total, 'two' = lower, the two-finger grips are the weak ones.
+const ROUTINE = [
+  {name:'Half crimp',            detail:'20 mm edge',      reps:6, load:'main'},
+  {name:'Three-finger drag',     detail:'edge or pocket',  reps:6, load:'main'},
+  {name:'Front 2-finger drag',   detail:'index + middle',  reps:2, load:'main'},
+  {name:'Middle 2-finger drag',  detail:'middle + ring',   reps:2, load:'main'},
+  {name:'Front 2-finger crimp',  detail:'index + middle',  reps:2, load:'two'},
+  {name:'Middle 2-finger crimp', detail:'middle + ring',   reps:2, load:'two'},
+];
+
+const DEFAULTS = {bw:70, maxAdd:40, pctMain:40, pctTwo:25, hang:10, rest:20, prep:10, beeps:true, speak:true};
+const cfg = Object.assign({}, DEFAULTS, JSON.parse(localStorage.getItem('abrahangs.cfg') || '{}'));
+const saveCfg = () => localStorage.setItem('abrahangs.cfg', JSON.stringify(cfg));
+
+// steps: prep, then hang/rest/hang/... with no trailing rest
+function buildSteps(c = cfg){
+  const steps = [];
+  if (c.prep > 0) steps.push({type:'prep', dur:c.prep, name:'Get ready', detail:'', set:1});
+  let set = 0;
+  for (const ex of ROUTINE){
+    for (let r = 0; r < ex.reps; r++){
+      set++;
+      steps.push({type:'hang', dur:c.hang, name:ex.name, detail:ex.detail, load:ex.load, set});
+      steps.push({type:'rest', dur:c.rest, name:'Rest', detail:'', set});
+    }
+  }
+  steps.pop(); // drop the rest after the final hang
+  return steps;
+}
+const TOTAL_SETS = ROUTINE.reduce((n, e) => n + e.reps, 0);
+
+let steps = buildSteps(), idx = 0, endsAt = 0, left = 0, running = false, tick = null, wake = null;
+
+const $ = id => document.getElementById(id);
+const fmt = s => Math.floor(s/60) + ':' + String(Math.ceil(s) % 60).padStart(2,'0');
+// Emil's method: max hang total = bodyweight + weight you can add for a 5s max hang.
+// Pull that percentage of it through your fingers; the scale reads the rest of you.
+const maxTotal = () => cfg.bw + cfg.maxAdd;
+const pctOf = load => (load === 'two' ? cfg.pctTwo : cfg.pctMain) / 100;
+const loadKg = load => maxTotal() * pctOf(load);
+const scaleKg = load => Math.max(0, cfg.bw - loadKg(load));
+
+/* ---- cues ---- */
+let ac = null;
+function beep(freq, ms){
+  if (!cfg.beeps || !ac) return;
+  const o = ac.createOscillator(), g = ac.createGain();
+  o.frequency.value = freq; o.type = 'sine'; o.connect(g); g.connect(ac.destination);
+  g.gain.setValueAtTime(0.0001, ac.currentTime);
+  g.gain.exponentialRampToValueAtTime(0.5, ac.currentTime + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.0001, ac.currentTime + ms/1000);
+  o.start(); o.stop(ac.currentTime + ms/1000 + 0.02);
+}
+function say(text){
+  if (!cfg.speak || !window.speechSynthesis) return;
+  speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.rate = 1.05; speechSynthesis.speak(u);
+}
+async function keepAwake(on){
+  try{
+    if (on && !wake && 'wakeLock' in navigator) wake = await navigator.wakeLock.request('screen');
+    if (!on && wake){ await wake.release(); wake = null; }
+  }catch(e){ /* denied or unsupported — the timer still runs */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && running) keepAwake(true);
+});
+
+/* ---- render ---- */
+function render(){
+  const s = steps[idx];
+  const done = idx >= steps.length;
+  document.documentElement.style.setProperty('--accent',
+    done ? 'var(--done)' : s.type === 'hang' ? 'var(--hang)' : s.type === 'rest' ? 'var(--rest)' : 'var(--prep)');
+
+  if (done){
+    $('phase').textContent = 'Session complete';
+    $('time').textContent = '✓';
+    $('setno').textContent = TOTAL_SETS + ' sets';
+    $('exercise').textContent = 'Done';
+    $('detail').textContent = 'Come back in 6+ hours';
+    $('next').textContent = '';
+    $('arc').setAttribute('stroke-dashoffset', 0);
+    $('start').textContent = 'Start';
+    return;
+  }
+  $('phase').textContent = s.type === 'hang' ? 'Hang' : s.type === 'rest' ? 'Rest' : 'Get ready';
+  $('time').textContent = fmt(left);
+  $('setno').textContent = 'set ' + s.set + ' / ' + TOTAL_SETS;
+  $('exercise').textContent = s.name;
+  $('detail').textContent = s.type === 'hang'
+    ? s.detail + ' · pull ' + loadKg(s.load).toFixed(0) + ' kg · scale ' + scaleKg(s.load).toFixed(0) + ' kg'
+    : s.detail;
+  const nxt = steps[idx+1];
+  $('next').textContent = nxt && nxt.type === 'hang' ? 'next: ' + nxt.name : '';
+  const frac = Math.max(0, Math.min(1, left / s.dur));
+  $('arc').setAttribute('stroke-dashoffset', (326.7 * (1 - frac)).toFixed(1));
+  $('start').textContent = running ? 'Pause' : (idx === 0 && left === steps[0].dur ? 'Start' : 'Resume');
+}
+
+/* ---- clock ---- */
+function enter(i){
+  idx = i;
+  if (idx >= steps.length){ stop(); logSession(); render(); say('Session complete'); beep(880,180); return; }
+  const s = steps[idx];
+  left = s.dur; endsAt = Date.now() + s.dur*1000;
+  if (s.type === 'hang'){ beep(880,150); say(s.name); }
+  else if (s.type === 'rest'){ beep(440,120); }
+  render();
+}
+let lastCountdown = -1;
+function frame(){
+  if (!running) return;
+  left = Math.max(0, (endsAt - Date.now())/1000);
+  const whole = Math.ceil(left);
+  if (whole <= 3 && whole > 0 && whole !== lastCountdown){ lastCountdown = whole; beep(660,70); }
+  if (left <= 0){ lastCountdown = -1; enter(idx+1); return; }
+  render();
+}
+function start(){
+  if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+  if (ac.state === 'suspended') ac.resume();
+  if (idx >= steps.length) reset();
+  running = true; endsAt = Date.now() + left*1000;
+  clearInterval(tick); tick = setInterval(frame, 100);
+  keepAwake(true);
+  if (left === steps[idx].dur) { const s = steps[idx]; if (s.type === 'hang') say(s.name); }
+  render();
+}
+function stop(){ running = false; clearInterval(tick); keepAwake(false); render(); }
+function reset(){ stop(); steps = buildSteps(); idx = 0; left = steps[0].dur; lastCountdown = -1; render(); }
+
+/* ---- history ---- */
+const today = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD, local
+const hist = () => JSON.parse(localStorage.getItem('abrahangs.log') || '{}');
+function logSession(){
+  const h = hist(); const d = today();
+  h[d] = (h[d] || 0) + 1;
+  localStorage.setItem('abrahangs.log', JSON.stringify(h));
+  renderHistory();
+}
+function streak(h = hist()){
+  let n = 0; const d = new Date();
+  for(;;){
+    const key = d.toLocaleDateString('en-CA');
+    if (h[key]) n++;
+    else if (n > 0 || key !== today()) break;   // today not done yet doesn't break yesterday's streak
+    d.setDate(d.getDate() - 1);
+    if (n > 3650) break;
+  }
+  return n;
+}
+function renderHistory(){
+  const h = hist();
+  const n = h[today()] || 0;
+  $('today').textContent = 'today ' + n + ' / 2';
+  $('streak').textContent = 'streak ' + streak(h) + 'd';
+  $('clock').textContent = n === 0 ? 'next any time' : n === 1 ? 'next in 6h+' : 'day done';
+  $('histCount').textContent = Object.values(h).reduce((a,b) => a+b, 0);
+}
+
+/* ---- settings ---- */
+function bindNum(id, key){
+  const el = $(id); el.value = cfg[key];
+  el.addEventListener('change', () => {
+    const v = parseFloat(el.value);
+    if (!isFinite(v)) { el.value = cfg[key]; return; }
+    cfg[key] = Math.min(parseFloat(el.max), Math.max(parseFloat(el.min), v));
+    el.value = cfg[key]; saveCfg(); reset(); renderSettings();
+  });
+}
+function bindBool(id, key){
+  const el = $(id); el.checked = cfg[key];
+  el.addEventListener('change', () => { cfg[key] = el.checked; saveCfg(); });
+}
+function renderSettings(){
+  $('maxTotal').textContent   = maxTotal().toFixed(1);
+  $('loadMain').textContent   = loadKg('main').toFixed(1);
+  $('scaleMain').textContent  = scaleKg('main').toFixed(1);
+  $('loadTwo').textContent    = loadKg('two').toFixed(1);
+  $('scaleTwo').textContent   = scaleKg('two').toFixed(1);
+  $('plan').innerHTML = ROUTINE.map(e =>
+    '<li><b>' + e.reps + ' × ' + cfg.hang + 's</b> ' + e.name + ' — ' + e.detail +
+    ' · pull ' + loadKg(e.load).toFixed(0) + ' kg (scale ' + scaleKg(e.load).toFixed(0) + ' kg)</li>').join('');
+}
+
+$('start').onclick = () => running ? stop() : start();
+$('skip').onclick  = () => { lastCountdown = -1; enter(idx+1); if (running){ endsAt = Date.now() + left*1000; } };
+$('reset').onclick = reset;
+$('openSettings').onclick  = () => { renderSettings(); $('panel').classList.add('on'); };
+$('closeSettings').onclick = () => $('panel').classList.remove('on');
+$('clearHist').onclick = () => { if (confirm('Delete all logged sessions?')){ localStorage.removeItem('abrahangs.log'); renderHistory(); } };
+bindNum('bw','bw'); bindNum('maxAdd','maxAdd'); bindNum('pctMain','pctMain'); bindNum('pctTwo','pctTwo'); bindNum('hang','hang'); bindNum('rest','rest'); bindNum('prep','prep');
+bindBool('beeps','beeps'); bindBool('speak','speak');
+
+reset(); renderHistory(); renderSettings();
+
+/* ---- self-check: open index.html?test ---- */
+if (location.search.includes('test')){
+  const out = [], ok = (name, cond) => out.push((cond ? 'PASS  ' : 'FAIL  ') + name);
+  const c = {bw:70, maxAdd:40, pctMain:40, pctTwo:25, hang:10, rest:20, prep:10};
+  const s = buildSteps(c);
+  ok('20 sets total', TOTAL_SETS === 20);
+  ok('prep + 20 hangs + 19 rests = 40 steps', s.length === 40);
+  ok('no trailing rest', s[s.length-1].type === 'hang');
+  ok('hang/rest alternate after prep', s.slice(1).every((x,i) => x.type === (i%2 ? 'rest' : 'hang')));
+  ok('200s of hanging', s.filter(x=>x.type==='hang').reduce((a,b)=>a+b.dur,0) === 200);
+  ok('session ≈ 9:50, matching the video after its 2:00 intro', s.reduce((a,b)=>a+b.dur,0) === 590);
+  ok('set numbers 1..20 in order', s.filter(x=>x.type==='hang').every((x,i)=>x.set===i+1));
+  ok('video chapter order', ROUTINE.map(e=>e.name).join('|') ===
+     'Half crimp|Three-finger drag|Front 2-finger drag|Middle 2-finger drag|Front 2-finger crimp|Middle 2-finger crimp');
+  ok('6+6+2+2+2+2 reps', ROUTINE.map(e=>e.reps).join('') === '662222');
+  ok('only the two-finger crimps drop the load', s.filter(x=>x.type==='hang').map(x=>x.load).join(',') ===
+     Array(16).fill('main').concat(['two','two','two','two']).join(','));
+  ok("Emil's own numbers: 80kg + 80kg max, 40% -> scale ~16kg",
+     (()=>{ Object.assign(cfg,{bw:80,maxAdd:80,pctMain:40,pctTwo:25});
+            const r = Math.abs(scaleKg('main') - 16) < 0.01 && Math.abs(loadKg('main') - 64) < 0.01;
+            Object.assign(cfg, DEFAULTS); return r; })());
+  ok('prep skipped when 0', buildSteps({...c, prep:0}).length === 39);
+  const h = {}; const d = new Date();
+  h[d.toLocaleDateString('en-CA')] = 2; d.setDate(d.getDate()-1);
+  h[d.toLocaleDateString('en-CA')] = 1;
+  ok('streak counts consecutive days', streak(h) === 2);
+  const y = new Date(); y.setDate(y.getDate()-1);
+  ok('streak survives an unstarted today', streak({[y.toLocaleDateString('en-CA')]:2}) === 1);
+  ok('streak stops at a gap', streak({'2020-01-01':2}) === 0);
+  const pre = document.createElement('pre');
+  pre.id = 'test'; pre.textContent = out.join('\n');
+  document.body.innerHTML = ''; document.body.appendChild(pre);
+}
+</script>
+</body>
+</html>
