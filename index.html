@@ -74,7 +74,7 @@
   <div class="dial">
     <svg viewBox="0 0 120 120">
       <circle class="track" cx="60" cy="60" r="52"></circle>
-      <circle class="arc" id="arc" cx="60" cy="60" r="52" stroke-dasharray="326.7" stroke-dashoffset="0"></circle>
+      <circle class="arc" id="arc" cx="60" cy="60" r="52" stroke-dasharray="326.726" stroke-dashoffset="0"></circle>
     </svg>
     <div class="dialtext">
       <div class="time" id="time">0:10</div>
@@ -168,9 +168,10 @@ function buildSteps(c = cfg){
 }
 const TOTAL_SETS = ROUTINE.reduce((n, e) => n + e.reps, 0);
 
-let steps = buildSteps(), idx = 0, endsAt = 0, left = 0, running = false, tick = null, wake = null;
+let steps = buildSteps(), idx = 0, endsAt = 0, left = 0, running = false, tick = null, raf = null, wake = null;
 
 const $ = id => document.getElementById(id);
+const CIRC = 2 * Math.PI * 52;   // circumference of the r=52 dial in the SVG viewBox
 const fmt = s => Math.floor(s/60) + ':' + String(Math.ceil(s) % 60).padStart(2,'0');
 // Emil's method: max hang total = bodyweight + weight you can add for a 5s max hang.
 // Pull that percentage of it through your fingers; the scale reads the rest of you.
@@ -207,6 +208,18 @@ document.addEventListener('visibilitychange', () => {
 });
 
 /* ---- render ---- */
+// The only two things that move between steps: the clock and the arc. Painting just
+// these on every animation frame is what keeps the dial smooth without re-writing
+// the whole screen 60 times a second.
+let shownTime = '';
+function paintDial(){
+  const s = steps[idx];
+  if (!s) return;
+  const t = fmt(left);
+  if (t !== shownTime){ $('time').textContent = t; shownTime = t; }
+  const frac = Math.max(0, Math.min(1, left / s.dur));
+  $('arc').setAttribute('stroke-dashoffset', (CIRC * (1 - frac)).toFixed(2));
+}
 function render(){
   const s = steps[idx];
   const done = idx >= steps.length;
@@ -215,7 +228,7 @@ function render(){
 
   if (done){
     $('phase').textContent = 'Session complete';
-    $('time').textContent = '✓';
+    $('time').textContent = '✓'; shownTime = '✓';
     $('setno').textContent = TOTAL_SETS + ' sets';
     $('exercise').textContent = 'Done';
     $('detail').textContent = 'Come back in 6+ hours';
@@ -225,7 +238,6 @@ function render(){
     return;
   }
   $('phase').textContent = s.type === 'hang' ? 'Hang' : s.type === 'rest' ? 'Rest' : 'Get ready';
-  $('time').textContent = fmt(left);
   $('setno').textContent = 'set ' + s.set + ' / ' + TOTAL_SETS;
   $('exercise').textContent = s.name;
   $('detail').textContent = s.type === 'hang'
@@ -233,41 +245,65 @@ function render(){
     : s.detail;
   const nxt = steps[idx+1];
   $('next').textContent = nxt && nxt.type === 'hang' ? 'next: ' + nxt.name : '';
-  const frac = Math.max(0, Math.min(1, left / s.dur));
-  $('arc').setAttribute('stroke-dashoffset', (326.7 * (1 - frac)).toFixed(1));
+  paintDial();
   $('start').textContent = running ? 'Pause' : (idx === 0 && left === steps[0].dur ? 'Start' : 'Resume');
 }
 
 /* ---- clock ---- */
+// The tone and words that open a step. Get-ready names the grip you're about to take,
+// so your hands are on the edge before the hang starts rather than after.
+function cueFor(list, i){
+  const s = list[i];
+  if (!s) return null;
+  if (s.type === 'hang') return {freq:880, ms:150, text:s.name};
+  if (s.type === 'rest') return {freq:440, ms:120, text:null};
+  const nxt = list[i+1];
+  return {freq:520, ms:120, text: nxt && nxt.type === 'hang' ? 'Get ready. ' + nxt.name : 'Get ready'};
+}
+function cue(i){
+  const c = cueFor(steps, i);
+  if (!c) return;
+  // Cues are decoration; a missing voice or a dead audio device must not stall the clock.
+  try{ beep(c.freq, c.ms); if (c.text) say(c.text); }catch(e){ /* keep timing */ }
+}
 function enter(i){
   idx = i;
   if (idx >= steps.length){ stop(); logSession(); render(); say('Session complete'); beep(880,180); return; }
   const s = steps[idx];
   left = s.dur; endsAt = Date.now() + s.dur*1000;
-  if (s.type === 'hang'){ beep(880,150); say(s.name); }
-  else if (s.type === 'rest'){ beep(440,120); }
+  cue(idx);
   render();
 }
 let lastCountdown = -1;
+// One tick of the clock: time comes from the wall clock, so a dropped or delayed
+// call costs a repaint, never a step's length. Safe to call from either driver.
 function frame(){
   if (!running) return;
   left = Math.max(0, (endsAt - Date.now())/1000);
   const whole = Math.ceil(left);
   if (whole <= 3 && whole > 0 && whole !== lastCountdown){ lastCountdown = whole; beep(660,70); }
   if (left <= 0){ lastCountdown = -1; enter(idx+1); return; }
-  render();
+  paintDial();
+}
+// rAF paints the dial at the display's refresh rate. It's parked while the tab is
+// hidden, so a slow interval runs alongside it to keep steps advancing there.
+function loop(){
+  if (!running) return;
+  try{ frame(); }
+  finally{ if (running) raf = requestAnimationFrame(loop); }   // one bad frame must not end the chain
 }
 function start(){
   if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
   if (ac.state === 'suspended') ac.resume();
   if (idx >= steps.length) reset();
   running = true; endsAt = Date.now() + left*1000;
-  clearInterval(tick); tick = setInterval(frame, 100);
+  clearInterval(tick); tick = setInterval(frame, 250);
+  cancelAnimationFrame(raf); raf = requestAnimationFrame(loop);
   keepAwake(true);
-  if (left === steps[idx].dur) { const s = steps[idx]; if (s.type === 'hang') say(s.name); }
+  if (left === steps[idx].dur) cue(idx);
   render();
 }
-function stop(){ running = false; clearInterval(tick); keepAwake(false); render(); }
+function stop(){ running = false; clearInterval(tick); cancelAnimationFrame(raf); keepAwake(false); render(); }
 function reset(){ stop(); steps = buildSteps(); idx = 0; left = steps[0].dur; lastCountdown = -1; render(); }
 
 /* ---- history ---- */
@@ -333,6 +369,7 @@ $('clearHist').onclick = () => { if (confirm('Delete all logged sessions?')){ lo
 bindNum('bw','bw'); bindNum('maxAdd','maxAdd'); bindNum('pctMain','pctMain'); bindNum('pctTwo','pctTwo'); bindNum('hang','hang'); bindNum('rest','rest'); bindNum('prep','prep');
 bindBool('beeps','beeps'); bindBool('speak','speak');
 
+$('arc').setAttribute('stroke-dasharray', CIRC.toFixed(3));
 reset(); renderHistory(); renderSettings();
 
 /* ---- self-check: open index.html?test ---- */
@@ -357,6 +394,12 @@ if (location.search.includes('test')){
             const r = Math.abs(scaleKg('main') - 16) < 0.01 && Math.abs(loadKg('main') - 64) < 0.01;
             Object.assign(cfg, DEFAULTS); return r; })());
   ok('prep skipped when 0', buildSteps({...c, prep:0}).length === 39);
+  ok('get-ready speaks the grip you are about to take', cueFor(s, 0).text === 'Get ready. Half crimp');
+  ok('a hang speaks its own grip', cueFor(s, 1).text === 'Half crimp');
+  ok('rest stays silent', cueFor(s, 2).text === null);
+  ok('get-ready with nothing after it still cues', cueFor([{type:'prep', dur:10}], 0).text === 'Get ready');
+  ok('every step has a cue', s.every((_, i) => cueFor(s, i) !== null));
+  ok('dial arc length matches the r=52 circle', Math.abs(CIRC - 326.7256) < 0.001);
   const h = {}; const d = new Date();
   h[d.toLocaleDateString('en-CA')] = 2; d.setDate(d.getDate()-1);
   h[d.toLocaleDateString('en-CA')] = 1;

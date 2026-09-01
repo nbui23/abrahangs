@@ -19,8 +19,9 @@ Twice a day, at least 6 hours apart and 6 hours clear of climbing. Every set is
 | 5 | Front 2-finger crimp (index + middle) | 2 × 10 s | ~25% |
 | 6 | Middle 2-finger crimp (middle + ring) | 2 × 10 s | ~25% |
 
-20 sets, ~9:50 end to end, after a 10 s "get ready" lead-in to position your
-hands. Set counts come from the video's chapter lengths at 30 s per set — denser
+20 sets, ~9:50 end to end, after a 10 s "get ready" lead-in that speaks the
+first grip so your hands are on the edge before the hang starts. Set counts
+come from the video's chapter lengths at 30 s per set — denser
 than the write-ups of Emil's original 30-day experiment (10 sets, 50 s rest).
 Hang, rest and lead-in seconds are all editable in Settings.
 
